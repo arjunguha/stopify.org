@@ -1,2 +1,0 @@
-#!/bin/bash
-node --harmony_tailcalls ./built/src/callcc/callcc $@
