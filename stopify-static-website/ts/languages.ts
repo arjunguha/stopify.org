@@ -5,7 +5,18 @@ export interface Language {
   stepSupported: boolean
 }
 
-const compilerBase = 'https://us-central1-arjun-umass.cloudfunctions.net/stopify';
+function getCompilerBase(): string {
+  switch (window.location.hostname) {
+    case 'localhost':
+      return 'http://localhost:8080';
+    case 'www.stopify.org':
+      return 'https://us-central1-arjun-umass.cloudfunctions.net/stopify';
+    default:
+      throw new Error(`missing case for current host`);
+  }
+}
+
+const compilerBase = getCompilerBase();
 
 export const langs: { [name: string]: Language } = {
   'Dart': {
