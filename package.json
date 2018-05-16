@@ -2,7 +2,7 @@
   "version": "0.0.1",
   "private": true,
   "workspaces": [
-      "stopify-third-party-compile-server",
-      "stopify-static-website"
+    "stopify-third-party-compile-server",
+    "stopify-static-website"
   ]
 }

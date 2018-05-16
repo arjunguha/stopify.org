@@ -7,18 +7,17 @@ export interface Language {
 
 const compilerBase = 'https://us-central1-arjun-umass.cloudfunctions.net/stopify';
 
-
 export const langs: { [name: string]: Language } = {
   'Dart': {
     stepSupported: false,
     compileUrl: `${compilerBase}/dart2js`,
     aceMode: 'dart',
-    defaultCode: `
-void main() {
+    defaultCode: `void main() {
   for (int i = 0; i < 10000000; i++) {
     print('hello \${i + 1}');
   }
-}`
+}
+`
   },
   'Clojure': {
     stepSupported: true,
@@ -50,7 +49,8 @@ int sum(int n) {
 
 int main() {
   printf("Sum: %d\\n", sum(1000000));
-}`
+}
+`
   },
   'OCaml': {
     stepSupported: false,
@@ -60,7 +60,8 @@ int main() {
 print_endline ("acc: " ^ (string_of_int acc));
 if n = 0 then acc else tail_sum (n - 1) (acc + n)
 
-let _ = tail_sum 1000000 1`,
+let _ = tail_sum 1000000 1
+`,
     compileUrl: `${compilerBase}/bucklescript`
   },
   'Scala': {
@@ -79,7 +80,8 @@ object Runner extends JSApp {
   def main(): Unit = {
     println(sum(1000000, 0))
   }
-}`,
+}
+`,
     compileUrl: `${compilerBase}/scalajs`
   },
   Python: {
@@ -95,7 +97,7 @@ object Runner extends JSApp {
         print i
 
 run_forever()
-    `,
+`,
     compileUrl: `${compilerBase}/pyjs`
   }
 }

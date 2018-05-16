@@ -8,4 +8,4 @@ jekyll build # Must run first, or generated .js files get clobbered
 
 $BROWSERIFY -d dist/stopify.js -o dist/stopify.js
 $BROWSERIFY -d dist/container.js -o dist/container.js
-cp ../stopify/dist/stopify.bundle.js dist/stopify.bundle.js
+cp ../node_modules/stopify/dist/stopify.bundle.js dist/stopify.bundle.js

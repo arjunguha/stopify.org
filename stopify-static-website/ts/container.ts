@@ -3,7 +3,7 @@
 // from the container (1) a message containing the JavaScript to run,
 // before it has been stopified and (2) a message directing execution to stop.
 
-import * as browser from 'detect-browser'
+import * as browser from 'detect-browser';
 
 // compiled bundle must be available
 declare const stopify: any;
@@ -26,7 +26,7 @@ window.addEventListener('message', evt => {
   const { type } = message;
   switch (type) {
     case 'start':
-      task = stopify.stopify('https://storage.googleapis.com/stopify-compiler-output/' + message.path, message.opts);
+      task = stopify.stopify(message.path, message.opts);
       task.setBreakpoints(message.breakpoints);
       task.run(() => { },
         () => { },

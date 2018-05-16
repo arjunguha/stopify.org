@@ -18,7 +18,6 @@
   "main": "dist/index.js",
   "scripts": {
     "build": "./node_modules/.bin/tsc",
-    "init-bucket": "./bin/init-bucket.sh",
     "deploy": "gcloud beta functions deploy stopify --memory=2048MB --timeout=300 --stage-bucket stopify-cloud-function --trigger-http",
     "deploy-testing": "gcloud beta functions deploy stopifyTesting --memory=2048MB --timeout=300 --stage-bucket stopify-cloud-function --trigger-http"
   },
@@ -37,7 +36,7 @@
     "morgan": "^1.9.0",
     "request": "^2.83.0",
     "request-promise-native": "^1.0.5",
-    "stopify": "0.1.0",
+    "stopify": "0.4.0",
     "tmp": "^0.0.33"
   }
 }

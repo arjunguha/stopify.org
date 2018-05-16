@@ -1,9 +1,7 @@
 import * as React from "react";
 import { render } from 'react-dom';
-import AceEditor from 'react-ace';
 import { StopifyAce } from './StopifyAce';
-import * as browser from 'detect-browser'
-import * as ace from 'brace';
+import * as browser from 'detect-browser';
 import { langs } from './languages';
 
 import * as stopifyCompiler from 'stopify';
@@ -60,7 +58,7 @@ interface StopifyEditorState {
   program: string,
   breakpoints: number[],
   line: number | null,
-  rhs: { type: 'iframe', url: string, path: string, opts: stopifyCompiler.Opts } |
+  rhs: { type: 'iframe', url: string, path: string, opts: stopifyCompiler.RuntimeOpts } |
     { type: 'message', text: string }
 }
 
@@ -141,8 +139,10 @@ class StopifyEditor extends React.Component<{ language: string }, StopifyEditorS
         }
       }))
     .then(path => {
-      const opts: stopifyCompiler.Opts = {
+      const opts: stopifyCompiler.RuntimeOpts = {
         filename: path,
+        stackSize: Infinity,
+        restoreFrames: Infinity,
         estimator: 'countdown',
         yieldInterval: 1,
         timePerElapsed: 1,

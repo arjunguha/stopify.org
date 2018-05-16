@@ -13,10 +13,20 @@ Configuration
 
 This is only necessary if you're deploying your own copy of this function.
 
-1. Tweak `config.json`.
+1. Create a bucket to cache compiled artifacts and set its default ACL so that
+   all files are world-readable. E.g.
 
-2. Run `yarn run init-bucket` to create the Google Cloud Storage bucket
-   that will hold compiled programs.
+       gsutil mb -c Regional -l us-central1 gs://stopify-compiler-output
+       gsutil defacl ch -u AllUsers:R gs://stopify-compiler-output
+
+2. In the `arjun-umass-settings` bucket, create a configuration file called
+   `<function-name>.json`. This is an example configuration:
+
+      {
+        "third-party-compilers": "http://104.198.65.105:8000",
+        "output-bucket": "stopify-compiler-output"
+      }
+
 
 Building
 --------

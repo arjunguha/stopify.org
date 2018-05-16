@@ -4,15 +4,11 @@ import * as bodyParser from 'body-parser';
 import * as request from 'request-promise-native';
 import * as fs from 'fs-extra';
 import * as path from 'path';
-import { tmpDir } from './misc';
 import * as storage from '@google-cloud/storage';
 import { resolve } from 'path';
 import * as crypto from 'crypto';
 import * as stopifyCompiler from 'stopify';
-
-const thirdPartyCompilers = 'http://104.198.65.105:8000';
-const sto = storage();
-const bucket = sto.bucket('stopify-compiler-output');
+import { settings } from './settings';
 
 export const stopify = express();
 export const stopifyTesting = stopify;
@@ -28,22 +24,22 @@ type CacheResult = { filename: string, exists: boolean };
  * @param lang the source language
  * @param input the source program
  */
-function checkCache(lang: string, input: string): Promise<CacheResult> {
+async function checkCache(lang: string, input: string): Promise<CacheResult> {
+  const { outputBucket } = await settings;
   const hash = crypto.createHash('md5').update(input).digest('hex');
   const filename = `${lang}-${hash}.js`;
-  return bucket.file(filename).exists()
-    .then(exists => ({ filename, exists: exists[0] }));
+  const [exists] = await outputBucket.file(filename).exists();
+  return { filename, exists };
 }
 
-function runStopify(response: express.Response, jsCode: string, filename: string, opts: stopifyCompiler.CompilerOpts) {
-  return tmpDir().then(dir => {
-    const jsPath = `${dir}/original.js`;
-    return fs.writeFile(jsPath, jsCode)
-      .then(_ => stopifyCompiler.stopify(jsPath, opts))
-  })
-  .then(stopifiedJsCode => bucket.file(filename).save(stopifiedJsCode))
-  .then(_ => response.send(filename));
-};
+async function runStopify(response: express.Response, jsCode: string,
+  filename: string, opts: Partial<stopifyCompiler.CompilerOpts>) {
+  const { outputBucket } = await settings;
+  const stopifiedJsCode = stopifyCompiler.stopify(jsCode, opts);
+  await outputBucket.file(filename).save(stopifiedJsCode);
+  return response.send(
+    `https://storage.googleapis.com/${outputBucket.name}/${filename}`);
+}
 
 function reject(response: express.Response) {
   return (reason: string) => {
@@ -70,15 +66,19 @@ function reject(response: express.Response) {
 //   })
 //   .catch(reject(resp)));
 
-function genericCompiler(lang: string, url: string, opts: stopifyCompiler.CompilerOpts) {
+function genericCompiler(lang: string, urlPath: string, opts:
+  Partial<stopifyCompiler.CompilerOpts>) {
   stopify.post(`/${lang}`, bodyParser.text({ type: '*/*' }), async (req, resp) => {
     try {
+      const { thirdPartyCompilers, outputBucket } = await settings;
+      const url = `${thirdPartyCompilers}/${urlPath}`;
       resp.set('Access-Control-Allow-Origin', '*');
       resp.set('Access-Control-Allow-Methods', 'POST');
 
       const { filename, exists } = await checkCache(lang, req.body);
       if (exists) {
-        return resp.send(filename);
+        return resp.send(
+          `https://storage.googleapis.com/${outputBucket.name}/${filename}`);
       }
 
       console.info(`Compiling ${lang} program (${req.body.length} bytes)`);
@@ -96,7 +96,7 @@ function genericCompiler(lang: string, url: string, opts: stopifyCompiler.Compil
   });
 }
 
-genericCompiler('pyjs', `${thirdPartyCompilers}/pyjs`, {
+genericCompiler('pyjs', `pyjs`, {
   getters: false,
   debug: false,
   captureMethod: 'lazy',
@@ -109,67 +109,26 @@ genericCompiler('pyjs', `${thirdPartyCompilers}/pyjs`, {
   externals: []
 });
 
-genericCompiler('emscripten', `${thirdPartyCompilers}/emscripten`, {
-  getters: false,
+genericCompiler('emscripten', `emscripten`, {
   debug: true,
-  captureMethod: 'lazy',
-  newMethod: 'wrapper',
-  es: 'sane',
-  hofs: 'builtin',
-  jsArgs: 'simple',
-  requireRuntime: false,
-  eval: false,
-  externals: []
+  externals: ['console', 'window', 'document']
 });
 
-genericCompiler('bucklescript', `${thirdPartyCompilers}/bucklescript`, {
-  getters: false,
-  debug: true,
-  captureMethod: 'lazy',
-  newMethod: 'wrapper',
-  es: 'sane',
-  hofs: 'builtin',
-  jsArgs: 'simple',
-  requireRuntime: false,
-  eval: false,
-  externals: []
+genericCompiler('bucklescript', `bucklescript`, {
+  // NOTE(arjun): setTimeout and clearTimeout appear in BS output. But, it is
+  // not safe to use them in Stopify.
+  externals: [ 'console', 'setTimeout', 'clearTimeout' ]
 });
 
-genericCompiler('scalajs',  `${thirdPartyCompilers}/scalajs`, {
-  getters: false,
+genericCompiler('scalajs',  `scalajs`, {
   debug: true,
-  captureMethod: 'lazy',
-  newMethod: 'wrapper',
-  es: 'sane',
-  hofs: 'builtin',
-  jsArgs: 'simple',
-  requireRuntime: false,
-  eval: false,
-  externals: []
 });
 
-genericCompiler('clojurescript', `${thirdPartyCompilers}/clojurescript`, {
-  getters: false,
+genericCompiler('clojurescript', `clojurescript`, {
   debug: true,
-  captureMethod: 'lazy',
-  newMethod: 'wrapper',
-  es: 'sane',
-  hofs: 'builtin',
-  jsArgs: 'simple',
-  requireRuntime: false,
-  eval: false,
-  externals: []
+  externals: ['console']
 });
 
-genericCompiler('dart2js',  `${thirdPartyCompilers}/dart2js`, {
-  getters: false,
-  debug: false,
-  captureMethod: 'lazy',
-  newMethod: 'wrapper',
-  es: 'sane',
-  hofs: 'builtin',
-  jsArgs: 'simple',
-  requireRuntime: false,
-  eval: false,
-  externals: []
+genericCompiler('dart2js',  `dart2js`, {
+  externals: [ 'console', 'document', 'window', 'navigator' ]
 });
