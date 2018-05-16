@@ -132,3 +132,33 @@ genericCompiler('clojurescript', `clojurescript`, {
 genericCompiler('dart2js',  `dart2js`, {
   externals: [ 'console', 'document', 'window', 'navigator' ]
 });
+
+
+stopify.post('/js', bodyParser.text({ type: '*/*' }), async (req, resp) => {
+  try {
+    resp.set('Access-Control-Allow-Origin', '*');
+    resp.set('Access-Control-Allow-Methods', 'POST');
+
+    const { thirdPartyCompilers, outputBucket } = await settings;
+    const { filename, exists } = await checkCache('js', req.body);
+    if (exists) {
+      return resp.send(
+        `https://storage.googleapis.com/${outputBucket.name}/${filename}`);
+    }
+    console.info(`Compiling JavaScript program (${req.body.length} bytes)`);
+    const stopifiedJsCode = await stopifyCompiler.stopify(req.body, {
+      debug: true,
+      externals: [ 'console', 'document', 'window' ]
+    });
+    await outputBucket.file(filename).save(stopifiedJsCode);
+    return resp.send(
+      `https://storage.googleapis.com/${outputBucket.name}/${filename}`);
+  }
+  catch (exn) {
+    resp.statusCode = 503;
+    const reason =
+      (exn.name === 'StatusCodeError' ? exn.response.body : exn).toString();
+    console.error(`Error: ${reason}`);
+    return resp.send(reason.toString());
+  }
+});

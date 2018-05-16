@@ -12,7 +12,7 @@ class MultilingualStopifyEditor extends React.Component<{}, {language: string}> 
 
   constructor(props: { language: string }) {
     super(props);
-    let lang = 'Scala';
+    let lang = 'JavaScript';
     if (window.location.hash.length > 1 &&
         Object.keys(langs).includes(window.location.hash.slice(1))) {
         lang = window.location.hash.slice(1);
@@ -36,7 +36,8 @@ class MultilingualStopifyEditor extends React.Component<{}, {language: string}> 
               <span className="caret"></span>
             </button>
             <ul className="dropdown-menu">
-            <li><a href="#" onClick={() => this.setState({ language: 'Dart' })}>Dart</a></li>
+            <li><a href="#" onClick={() => this.setState({ language: 'JavaScript' })}>JavaScript</a></li>
+              <li><a href="#" onClick={() => this.setState({ language: 'Dart' })}>Dart</a></li>
               <li><a href="#" onClick={() => this.setState({ language: 'Python' })}>Python</a></li>
               <li><a href="#" onClick={() => this.setState({ language: 'Scala' })}>Scala</a></li>
               <li><a href="#" onClick={() => this.setState({ language: 'OCaml' })}>OCaml</a></li>

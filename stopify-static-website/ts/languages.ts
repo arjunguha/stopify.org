@@ -99,5 +99,20 @@ object Runner extends JSApp {
 run_forever()
 `,
     compileUrl: `${compilerBase}/pyjs`
+  },
+  JavaScript: {
+    stepSupported: true,
+    aceMode: 'js',
+    defaultCode:
+    `function fib(n) {
+  console.log('fib(' + n + ')');
+  if (n === 0 || n === 1) {
+    return 1;
   }
+  return fib(n-1) + fib(n-2);
 }
+fib(15);
+`,
+    compileUrl: `${compilerBase}/js`
+  }
+};
