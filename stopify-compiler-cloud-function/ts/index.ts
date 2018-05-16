@@ -97,16 +97,8 @@ function genericCompiler(lang: string, urlPath: string, opts:
 }
 
 genericCompiler('pyjs', `pyjs`, {
-  getters: false,
-  debug: false,
-  captureMethod: 'lazy',
-  newMethod: 'wrapper',
-  es: 'sane',
-  hofs: 'builtin',
   jsArgs: 'faithful',
-  requireRuntime: false,
-  eval: false,
-  externals: []
+  externals: ['console', 'window', 'document', 'alert']
 });
 
 genericCompiler('emscripten', `emscripten`, {
