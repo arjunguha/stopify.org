@@ -51,7 +51,7 @@ export const langs: { [name: string]: Language } = {
 int sum(int n) {
   auto sum = 0;
   for (int i = 0; i < n; i++) {
-    sum += i;
+    sum = (sum + i) % 1000;
     printf("acc: %d\\n", sum);
   }
 
