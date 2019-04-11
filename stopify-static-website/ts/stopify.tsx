@@ -4,9 +4,56 @@ import { StopifyAce } from './StopifyAce';
 import * as browser from 'detect-browser';
 import { langs } from './languages';
 
-import * as stopifyCompiler from 'stopify';
+import { AsyncRun, CompilerOpts, RuntimeOpts } from 'stopify';
+
+declare const stopify : any;
+
+
+
+const consoleFeed = require('console-feed');
+const Console = require('console-feed').Console;
 
 type Mode = 'stopped' | 'paused' | 'compiling' | 'running';
+
+type StopifyComponentProps = {
+  runner: AsyncRun,
+  callback: (mode: Mode) => void
+};
+
+class StopifyComponent extends React.Component<StopifyComponentProps, { logs: any[] }> {
+
+  constructor(props: StopifyComponentProps) {
+    super(props);
+    this.state = { logs: [] };
+    this.props.callback('running');
+  }
+
+  componentDidMount() {
+    console.log('componentDidMount');
+    this.props.runner.g.console = { };
+    consoleFeed.Hook(this.props.runner.g.console, (log: any) => {
+        this.setState(({ logs }) => {
+          return { logs: [...logs,
+            { method: 'log',
+              data: [ consoleFeed.Decode(log) ] } ] };
+        });
+    });
+    window.setTimeout(() =>
+      this.props.runner.run((result) => {
+      }), 0);
+  }
+
+  render() {
+    return <div >
+      <Console logs={this.state.logs}></Console>
+    </div>
+  }
+//   rhs = <iframe key={this.state.rhs.url} ref={(frame) => this.iframe = frame}
+//   src={this.state.rhs.url} width='100%' height='100%'
+//   style={{border: 'none', overflow: 'hidden'}}>
+// </iframe>;
+
+}
 
 class MultilingualStopifyEditor extends React.Component<{}, {language: string}> {
 
@@ -59,15 +106,13 @@ interface StopifyEditorState {
   program: string,
   breakpoints: number[],
   line: number | null,
-  rhs: { type: 'iframe', url: string, path: string, opts: stopifyCompiler.RuntimeOpts } |
-    { type: 'message', text: string }
+  rhs: { type: 'runner', runner: AsyncRun } |
+       { type: 'message', text: string }
 }
 
 class StopifyEditor extends React.Component<{ language: string }, StopifyEditorState> {
 
   static compileMessage = 'Click "Run" to compile and run.';
-
-  private iframe: HTMLIFrameElement | null = null;
 
   constructor(props: { language: string }) {
     super(props);
@@ -83,37 +128,42 @@ class StopifyEditor extends React.Component<{ language: string }, StopifyEditorS
       line: null,
       rhs: { type: 'message', text: StopifyEditor.compileMessage }
     };
+  }
 
-    window.addEventListener('message', evt => {
-      // Message could be from somethign else, e.g., React DevTools
-      if (this.iframe === null || evt.source !== this.iframe.contentWindow) {
-        return;
-      }
-      if (evt.data.type === 'ready') {
-        if (this.state.mode === 'compiling' &&
-            this.state.rhs.type === 'iframe') {
-          this.setState({ mode: 'running' });
-          this.iframe!.contentWindow.postMessage({
-            type: 'start',
-            path: this.state.rhs.path,
-            opts: this.state.rhs.opts,
-            breakpoints: this.state.breakpoints
-          }, '*');
-        }
-        else {
-          console.warn(`Unexpected ready from container when not compiling`);
-        }
-      }
-      else if (evt.data.type === 'paused') {
-        this.setState({
-          mode: 'paused',
-          line: evt.data.linenum - 1 || null
-        });
-      }
-      else {
-        console.warn(`Unexpected message from container`, evt.data);
-      }
-    });
+  stopifyCallback(mode: Mode) {
+    // window.addEventListener('message', evt => {
+    //   // Message could be from somethign else, e.g., React DevTools
+    //   if (this.iframe === null || evt.source !== this.iframe.contentWindow) {
+    //     return;
+    //   }
+    //   if (evt.data.type === 'ready') {
+    //     if (this.state.mode === 'compiling' &&
+    //         this.state.rhs.type === 'iframe') {
+    //       this.setState({ mode: 'running' });
+    //       this.iframe!.contentWindow.postMessage({
+    //         type: 'start',
+    //         path: this.state.rhs.path,
+    //         opts: this.state.rhs.opts,
+    //         breakpoints: this.state.breakpoints
+    //       }, '*');
+    //     }
+    //     else {
+    //       console.warn(`Unexpected ready from container when not compiling`);
+    //     }
+    //   }
+    //   else if (evt.data.type === 'paused') {
+    //     this.setState({
+    //       mode: 'paused',
+    //       line: evt.data.linenum - 1 || null
+    //     });
+    //   }
+    //   else {
+    //     console.warn(`Unexpected message from container`, evt.data);
+    //   }
+    // });
+    if (mode === 'running') {
+      this.setState({ mode: 'running' });
+    }
   }
 
   setBreakpoints(breakpoints: number[]) {
@@ -125,41 +175,32 @@ class StopifyEditor extends React.Component<{ language: string }, StopifyEditorS
     // if (lastLineMarker !== null) {
     //   editor.session.removeMarker(lastLineMarker);
     // }
-    fetch(new Request(langs[this.props.language].compileUrl, {
-      method: 'POST',
-      body: this.state.program,
-      mode: 'cors'
-    }))
-    .then(resp =>
-      resp.text().then(text => {
-        if (resp.status === 200) {
-          return text;
-        }
-        else {
-          throw text;
-        }
-      }))
-    .then(path => {
-      const opts: stopifyCompiler.RuntimeOpts = {
-        filename: path,
-        stackSize: Infinity,
-        restoreFrames: Infinity,
-        estimator: 'countdown',
-        yieldInterval: 1,
-        timePerElapsed: 1,
-        resampleInterval: 1,
-        variance: false,
-        env: browser.name as any,
-        stop: undefined
-      };
-      this.setState({
-        rhs: { type: 'iframe', url: './container.html', opts: opts, path: path }
-      });
-    }).catch(reason => {
+    const runtimeOpts: Partial<RuntimeOpts> = {
+      stackSize: Infinity,
+      restoreFrames: Infinity,
+      estimator: 'countdown',
+      yieldInterval: 1,
+      timePerElapsed: 1,
+      resampleInterval: 1,
+      variance: false,
+      env: browser.name as any,
+      stop: undefined
+    };
+    const compileOpts: Partial<CompilerOpts> = {
+      debug: true,
+      hofs: 'builtin'
+    };
+    const compileResult = stopify.stopifyLocally(this.state.program,
+      compileOpts, runtimeOpts);
+    if (compileResult.kind === 'error') {
       this.setState({
         mode: 'stopped',
-        rhs: { type: 'message', text: reason }
+        rhs: { type: 'message', text: compileResult.exception.toString() }
       });
+      return;
+    }
+    this.setState({
+      rhs: { type: 'runner', runner: compileResult }
     });
   }
 
@@ -171,13 +212,13 @@ class StopifyEditor extends React.Component<{ language: string }, StopifyEditorS
         return this.compile();
       case 'running':
         this.setState({ mode: 'paused' });
-        this.iframe!.contentWindow.postMessage({ type: 'pause' }, '*');
+        // this.iframe!.contentWindow.postMessage({ type: 'pause' }, '*');
         return;
       case 'paused':
-        this.iframe!.contentWindow.postMessage({
-          type: 'continue',
-          breakpoints: this.state.breakpoints
-        }, '*');
+        // this.iframe!.contentWindow.postMessage({
+        //   type: 'continue',
+        //   breakpoints: this.state.breakpoints
+        // }, '*');
         this.setState({ mode: 'running' });
         return;
     }
@@ -187,11 +228,10 @@ class StopifyEditor extends React.Component<{ language: string }, StopifyEditorS
     if (this.state.mode !== 'paused') {
       return;
     }
-    this.iframe!.contentWindow.postMessage({ type: 'step' }, '*');
+    // this.iframe!.contentWindow.postMessage({ type: 'step' }, '*');
   }
 
   onStop() {
-    this.iframe = null;
     this.setState({
       mode: 'stopped',
       rhs: { type: 'message', text: StopifyEditor.compileMessage },
@@ -248,11 +288,10 @@ class StopifyEditor extends React.Component<{ language: string }, StopifyEditorS
       rhs = <div>{lines}</div>;
     }
     else {
-      // The "key" in the iframe is unique and forces a full reload.
-     rhs = <iframe key={this.state.rhs.url} ref={(frame) => this.iframe = frame}
-                   src={this.state.rhs.url} width='100%' height='100%'
-                   style={{border: 'none', overflow: 'hidden'}}>
-           </iframe>;
+     rhs = <StopifyComponent
+              runner={this.state.rhs.runner}
+              callback={(mode) => this.stopifyCallback(mode)}>
+           </StopifyComponent>;
     }
     return <div className="row display-flex">
       <div className="col-md-8 col-xs-12">

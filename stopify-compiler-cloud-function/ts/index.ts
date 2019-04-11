@@ -67,7 +67,7 @@ function reject(response: express.Response) {
 //   .catch(reject(resp)));
 
 function genericCompiler(lang: string, urlPath: string, opts:
-  Partial<stopifyCompiler.CompilerOpts>) {
+  Partial<stopifyCompiler.CompilerOpts>,) {
   stopify.post(`/${lang}`, bodyParser.text({ type: '*/*' }), async (req, resp) => {
     try {
       const { thirdPartyCompilers, outputBucket } = await settings;
