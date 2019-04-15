@@ -30,28 +30,25 @@ class StopifyComponent extends React.Component<StopifyComponentProps, { logs: an
 
   componentDidMount() {
     console.log('componentDidMount');
-    this.props.runner.g.console = { };
-    consoleFeed.Hook(this.props.runner.g.console, (log: any) => {
-        this.setState(({ logs }) => {
-          return { logs: [...logs,
-            { method: 'log',
-              data: [ consoleFeed.Decode(log) ] } ] };
-        });
-    });
+    // this.props.runner.g.console = { };
+    this.props.runner.g.console = {
+      log: (msg: any) => {
+        this.setState((prevState) => ({logs: [...prevState.logs, {
+          method: 'log',
+          data: [msg]
+        }]}))
+      },
+    };;
     window.setTimeout(() =>
       this.props.runner.run((result) => {
       }), 0);
   }
 
   render() {
-    return <div >
+    return <div style={{ backgroundColor: '#242424', height: "100%" }} >
       <Console logs={this.state.logs}></Console>
     </div>
   }
-//   rhs = <iframe key={this.state.rhs.url} ref={(frame) => this.iframe = frame}
-//   src={this.state.rhs.url} width='100%' height='100%'
-//   style={{border: 'none', overflow: 'hidden'}}>
-// </iframe>;
 
 }
 
